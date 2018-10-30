@@ -35,3 +35,7 @@ svg {
 .meteorites {
   fill: hsl(332, 100%, 50%);
 }
+
+.temptext {
+  background-color: aliceblue;
+}

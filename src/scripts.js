@@ -33,12 +33,27 @@ d3.json('/world.json').then(function (world) {
   svg.insert("path", ".graticule")
       .datum(topojson.feature(world, world.objects.land))
       .attr("class", "land")
-      .attr("d", path);
+      .attr("d", path)
+  ;
   svg.insert("path", ".graticule")
-      .datum(topojson.mesh(world, world.objects.countries, (a, b) =>  a !== b))
+      .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
       .attr("class", "boundary")
-      .attr("d", path);
+      .attr("d", path)
+  ;
 }).catch(error => console.error(error));
+
+const massArray = data.features.map(f => +f.properties.mass);
+const max = d3.max(massArray);
+const median = d3.median(massArray);
+const dr = DistributionRanges(0, max, median);
+path.pointRadius(function (feature) {
+  if (feature.type === 'Feature' && feature.geometry
+      && feature.geometry.type === 'Point' && feature.properties
+      && feature.properties.mass) {
+    return dr(feature.properties.mass) + 2;
+  }
+  return 4.5;
+});
 
 svg.append('g')
   .attr('class', 'meteor-layer')
@@ -140,7 +155,8 @@ svg.on('wheel', function () {
         ty: d3.event.clientY
       });
     }
-  });
+  })
+;
 
 function Render() {
   let request = requestAnimationFrame(render);
@@ -266,4 +282,25 @@ function Drag(render) {
     },
     isDragging: () => dragging
   };
+}
+
+function DistributionRanges(min, max, median) {
+  const sizes = [2, 3, 4, 5, 7, 9, 11, 13];
+  const firstHalf = (median - min) / 4;
+  const secondHalf = (max - median) / 4;
+  const firstHalfRanges = [];
+  const secondHalfRanges = [];
+  for (let i = 0; i <= 4; i++) {
+    firstHalfRanges.push(min + firstHalf * i);
+    secondHalfRanges.push(median + secondHalf * i);
+  }
+  firstHalfRanges.pop();
+  const ranges = [...firstHalfRanges, ...secondHalfRanges];
+  return function getSize(mass) {
+    for (let i = 0; i <= 10; i++) {
+      if (ranges[i] <= mass && mass <= ranges[i + 1]) {
+        return sizes[i];
+      }
+    }
+  }
 }
