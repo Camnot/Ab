@@ -1,5 +1,10 @@
 body {
   background-color: #222;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
 }
 
 h1 {
@@ -13,6 +18,8 @@ h1 {
 svg {
   background: wheat;
   user-select: none;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
 }
 
 .graticule {
@@ -36,6 +43,32 @@ svg {
   fill: hsl(332, 100%, 50%);
 }
 
+.meteorites:hover {
+  z-index: 2;
+  fill: blue;
+}
+
 .temptext {
   background-color: aliceblue;
+}
+
+.window {
+  height: 250px;
+  width: 200px;
+  background-color: hsla(270,100%,60%, 0.8);
+  position: absolute;
+  top: 20px;
+  left: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  border: thin solid wheat;
+}
+
+.window.close {
+  display: none;
+}
+
+.flat {
+  margin-top: 0;
+  margin-bottom: 14px;
 }

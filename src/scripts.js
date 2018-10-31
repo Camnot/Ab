@@ -62,6 +62,29 @@ svg.append('g')
   .enter().append('path')
   .attr('class', 'meteorites')
   .attr('d', path)
+  .on('mouseover', function (feature) {
+    const w = document.querySelector('.window');
+    w.classList.remove('close');
+    w.style.top = (d3.event.clientY + 20 + pageYOffset) + 'px';
+    const space = width - (pageXOffset + d3.event.clientX + 200 + 20);
+    w.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
+
+    const {
+      id, name, year, mass, recclass, reclat, reclong
+    } = feature.properties;
+    w.innerHTML = [
+      `id: ${id}`,
+      `name: ${name}`,
+      `year: ${new Date(year).getFullYear()}`,
+      `mass: ${mass}`,
+      `class: ${recclass}`,
+      `lat: ${reclat}`,
+      `long: ${reclong}`
+    ].map((f) => `<p class="flat">${f}</p>`).join('');
+  })
+  .on('mouseleave', function () {
+    document.querySelector('.window').classList.add('close');
+  });
 ;
 
 const middleY = height / 2;
@@ -83,6 +106,8 @@ svg.append('line')
   .attr('y2', middleY + length)
   .attr('stroke', stroke)
 ;
+
+d3.select('body').append('div').attr('class', 'window close');
 
 const render = Render();
 let scale = SCALE;
