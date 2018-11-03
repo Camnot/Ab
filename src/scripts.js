@@ -4,17 +4,17 @@ import * as d3 from 'd3';
 import data from './data.json';
 import * as topojson from 'topojson';
 
-const width = Math.min(960, document.body.clientWidth);
-let height = 480;
+let width = Math.min(960, document.body.clientWidth);
+let height = Math.min(480, document.body.clientHeight);
 
-const SCALE = height / Math.PI;
-const COORS = [width / 2, height / 2];
-const CENTER = [0, 0];
-const projection = d3.geoEquirectangular()
+let SCALE = height / Math.PI;
+let COORS = [width / 2, height / 2];
+let CENTER = [0, 0];
+let projection = d3.geoEquirectangular()
   .scale(SCALE)
   .translate(COORS)
 ;
-const path = d3.geoPath()
+let path = d3.geoPath()
   .projection(projection)
 ;
 const graticule = d3.geoGraticule();
@@ -98,6 +98,7 @@ svg.append('line')
   .attr('x2', middleX + length)
   .attr('y2', middleY)
   .attr('stroke', stroke)
+  .attr('class', 'cross-center')
 ;
 svg.append('line')
   .attr('x1', middleX)
@@ -105,6 +106,7 @@ svg.append('line')
   .attr('x2', middleX)
   .attr('y2', middleY + length)
   .attr('stroke', stroke)
+  .attr('class', 'cross-center')
 ;
 
 d3.select('body').append('div').attr('class', 'window close');
@@ -136,7 +138,6 @@ svg.on('wheel', function () {
   .on('touchstart', function () {
     d3.event.preventDefault();
     zoom.start();
-    console.log(d3.event);
     drag.start({
       tx: d3.event.touches[0].clientX,
       ty: d3.event.touches[0].clientY
@@ -144,8 +145,8 @@ svg.on('wheel', function () {
   })
   .on('touchend', function () {
     zoom.end();
-    console.log(d3.event);
     drag.drop();
+    render.stop();
   })
   .on('touchmove', function () {
     d3.event.preventDefault();
@@ -183,23 +184,60 @@ svg.on('wheel', function () {
   })
 ;
 
+window.addEventListener('resize', function (e) {
+  render.queue(function before() {
+    width = Math.min(960, document.body.clientWidth);
+    height = Math.min(480, document.body.clientHeight);
+    svg
+      .attr('width', width)
+      .attr('height', height)
+    ;
+    COORS = [width / 2, height / 2];
+    SCALE = height / Math.PI;
+    scale = SCALE;
+    projection
+      .scale(scale)
+      .translate(COORS);
+    path = d3.geoPath()
+      .projection(projection)
+    ;
+
+    svg.selectAll('.cross-center').remove();
+
+    const middleY = height / 2;
+    const middleX = width / 2;
+    const length = 10;
+    const stroke = '#45aca0';
+    
+    svg.append('line')
+      .attr('x1', middleX - length)
+      .attr('y1', middleY)
+      .attr('x2', middleX + length)
+      .attr('y2', middleY)
+      .attr('stroke', stroke)
+      .attr('class', 'cross-center')
+    ;
+    svg.append('line')
+      .attr('x1', middleX)
+      .attr('y1', middleY - length)
+      .attr('x2', middleX)
+      .attr('y2', middleY + length)
+      .attr('stroke', stroke)
+      .attr('class', 'cross-center')
+    ;
+  });
+});
+
 function Render() {
   let request = requestAnimationFrame(render);
 
   return {
-    queue(beforeRender) {
-      cancelAnimationFrame(request);
-      if (beforeRender) {
-        request = requestAnimationFrame(function callback() {
-          beforeRender();
-          render();
-        });
-      } else {
-        request = requestAnimationFrame(render);
-      }
-    },
+    queue,
     imediate() {
       requestAnimationFrame(render);
+    },
+    stop() {
+      cancelAnimationFrame(request);
     }
   };
 
@@ -213,6 +251,21 @@ function Render() {
     svg.selectAll('.meteorites')
       .attr('d', path);
   }
+
+  function queue(beforeRender, after) {
+    cancelAnimationFrame(request);
+    if (beforeRender) {
+      request = requestAnimationFrame(function callback() {
+        beforeRender();
+        render();
+        if (after) {
+          queue(after);
+        }
+      });
+    } else {
+      request = requestAnimationFrame(render);
+    }
+  }
 }
 
 function Zoom(render) {
@@ -220,11 +273,9 @@ function Zoom(render) {
   const RESET = 'RESET';
   let state = ZOOM;
   let timeOut;
-  let timer;
 
   return {
     start() {
-      timer = Date.now();
       switch (state) {
         case ZOOM:
         timeOut = setTimeout(zoom, 1050);
@@ -246,7 +297,6 @@ function Zoom(render) {
       scale = Math.min(scale + 3 * 22, 2000);
       projection.scale(scale);
       state = RESET;
-      console.log(projection.translate());
     });
     timeOut = setTimeout(zoom, 20);
   }
