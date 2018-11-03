@@ -55,6 +55,7 @@ path.pointRadius(function (feature) {
   return 4.5;
 });
 
+let displayDataActive = false;
 svg.append('g')
   .attr('class', 'meteor-layer')
   .selectAll('.meteorites')
@@ -62,30 +63,42 @@ svg.append('g')
   .enter().append('path')
   .attr('class', 'meteorites')
   .attr('d', path)
-  .on('mouseover', function (feature) {
-    const w = document.querySelector('.window');
-    w.classList.remove('close');
-    w.style.top = (d3.event.clientY + 20 + pageYOffset) + 'px';
-    const space = width - (pageXOffset + d3.event.clientX + 200 + 20);
-    w.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
-
-    const {
-      id, name, year, mass, recclass, reclat, reclong
-    } = feature.properties;
-    w.innerHTML = [
-      `id: ${id}`,
-      `name: ${name}`,
-      `year: ${new Date(year).getFullYear()}`,
-      `mass: ${mass}`,
-      `class: ${recclass}`,
-      `lat: ${reclat}`,
-      `long: ${reclong}`
-    ].map((f) => `<p class="flat">${f}</p>`).join('');
-  })
+  .on('mouseover', showMeteoriteData)
   .on('mouseleave', function () {
     document.querySelector('.window').classList.add('close');
-  });
+  })
+  .on('touchstart', function (feature) {
+    displayDataActive = true;
+  })
+  .on('touchend', function (feature) {
+    if (displayDataActive) {
+      showMeteoriteData.call(this, feature);
+    }
+  })
 ;
+
+function showMeteoriteData(feature) {
+  const w = document.querySelector('.window');
+  w.classList.remove('close');
+  const touches = d3.event.changedTouches;
+  const { clientX, clientY } = touches? touches[0]: d3.event;
+  w.style.top = (clientY + 20 + pageYOffset) + 'px';
+  const space = width - (pageXOffset + clientX + 200 + 20);
+  w.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
+
+  const {
+    id, name, year, mass, recclass, reclat, reclong
+  } = feature.properties;
+  w.innerHTML = [
+    `id: ${id}`,
+    `name: ${name}`,
+    `year: ${new Date(year).getFullYear()}`,
+    `mass: ${mass}`,
+    `class: ${recclass}`,
+    `lat: ${reclat}`,
+    `long: ${reclong}`
+  ].map((f) => `<p class="flat">${f}</p>`).join('');
+}
 
 const middleY = height / 2;
 const middleX = width / 2;
@@ -109,7 +122,20 @@ svg.append('line')
   .attr('class', 'cross-center')
 ;
 
-d3.select('body').append('div').attr('class', 'window close');
+d3.select('body').append('div').attr('class', 'window close')
+  .on('touchstart', function () {
+    if (displayDataActive) {
+      document.querySelector('.window').classList.add('close');
+      displayDataActive = false;
+    }
+  })
+  .on('touchmove', function () {
+    if (displayDataActive) {
+      document.querySelector('.window').classList.add('close');
+      displayDataActive = false;
+    }
+  })
+;
 
 const render = Render();
 let scale = SCALE;
@@ -119,7 +145,7 @@ const drag = Drag(render);
 let center = [...CENTER];
 
 svg.on('wheel', function () {
-    const sum =  -d3.event.deltaY * 22;
+    const sum = -d3.event.deltaY * 22;
     scale = Math.min(2000, Math.max(40, scale + sum));
     projection.scale(scale);
     render.queue(function beforeRender() {
@@ -142,6 +168,10 @@ svg.on('wheel', function () {
       tx: d3.event.touches[0].clientX,
       ty: d3.event.touches[0].clientY
     });
+    if (d3.event.eventPhase === 2 && displayDataActive) {
+      document.querySelector('.window').classList.add('close');
+      displayDataActive = false;
+    }
   })
   .on('touchend', function () {
     zoom.end();
@@ -156,6 +186,10 @@ svg.on('wheel', function () {
         tx: d3.event.touches[0].clientX,
         ty: d3.event.touches[0].clientY
       });
+    }
+    if (displayDataActive) {
+      document.querySelector('.window').classList.add('close');
+      displayDataActive = false;
     }
   })
   .on('mousedown', function (e) {
@@ -281,14 +315,14 @@ function Zoom(render) {
         timeOut = setTimeout(zoom, 1050);
         break;
         case RESET:
-        timeOut = setTimeout(reset, 750);
+        timeOut = setTimeout(resetScale, 750);
         break;
       }
     },
     end() {
       clearTimeout(timeOut);
     },
-    reset
+    reset: resetScale
   };
 
   function zoom() {
@@ -301,14 +335,23 @@ function Zoom(render) {
     timeOut = setTimeout(zoom, 20);
   }
 
-  function reset() {
+  function resetScale() {
     render.queue(function beforeRender() {
       scale = SCALE;
       projection.scale(scale);
+      state = ZOOM;
+      if (displayDataActive) {
+        document.querySelector('.window').classList.add('close');
+        displayDataActive = false;
+      }
+    });
+    timeOut = setTimeout(resetCenter, 300);
+  }
+  
+  function resetCenter() {
+    render.queue(function beforeRender() {
       center = [...CENTER];
       projection.center(CENTER);
-
-      state = ZOOM;
     });
   }
 }
