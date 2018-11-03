@@ -8,10 +8,13 @@ const compiler = webpack(config);
 
 app.use(express.static('public'));
 
-app.use(webpackDevMiddleware(compiler, {
-  publicPath: config.output.publicPath
-}));
-
+if (process.env.NODE_ENV !== 'production') {
+  app.use(webpackDevMiddleware(compiler, {
+    publicPath: config.output.publicPath
+  }));
+} else {
+  app.use(express.static('dist'));
+}
 app.listen(3000, function () {
   console.log('App is listening on port 3000!\n');
 });
