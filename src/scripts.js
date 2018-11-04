@@ -344,8 +344,9 @@ function Zoom(render) {
         document.querySelector('.window').classList.add('close');
         displayDataActive = false;
       }
+    }, function after() {
+      timeOut = setTimeout(resetCenter, 400);
     });
-    timeOut = setTimeout(resetCenter, 300);
   }
   
   function resetCenter() {
