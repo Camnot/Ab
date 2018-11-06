@@ -74,7 +74,7 @@ svg.append('g')
   .on('mouseleave', function () {
     document.querySelector('.window').classList.add('close');
   })
-  .on('touchstart', function (feature) {
+  .on('touchstart', function () {
     displayDataActive = true;
   })
   .on('touchend', function (feature) {
@@ -129,19 +129,10 @@ svg.append('line')
   .attr('class', 'cross-center')
 ;
 
+const closeWindow = CloseWindow();
 d3.select('body').append('div').attr('class', 'window close')
-  .on('touchstart', function () {
-    if (displayDataActive) {
-      document.querySelector('.window').classList.add('close');
-      displayDataActive = false;
-    }
-  })
-  .on('touchmove', function () {
-    if (displayDataActive) {
-      document.querySelector('.window').classList.add('close');
-      displayDataActive = false;
-    }
-  })
+  .on('touchstart', closeWindow)
+  .on('touchmove', closeWindow)
 ;
 
 const render = Render();
@@ -175,13 +166,14 @@ svg.on('wheel', function () {
       tx: d3.event.touches[0].clientX,
       ty: d3.event.touches[0].clientY
     });
-    if (d3.event.eventPhase === 2 && displayDataActive) {
-      document.querySelector('.window').classList.add('close');
-      displayDataActive = false;
+
+    if (d3.event.eventPhase === 2) {
+      closeWindow();
     }
   })
   .on('touchend', function () {
     zoom.end();
+    render.stop();
     drag.drop();
     render.stop();
   })
@@ -194,10 +186,7 @@ svg.on('wheel', function () {
         ty: d3.event.touches[0].clientY
       });
     }
-    if (displayDataActive) {
-      document.querySelector('.window').classList.add('close');
-      displayDataActive = false;
-    }
+    closeWindow();
   })
   .on('mousedown', function (e) {
     d3.event.preventDefault();
@@ -347,10 +336,7 @@ function Zoom(render) {
       scale = SCALE;
       projection.scale(scale);
       state = ZOOM;
-      if (displayDataActive) {
-        document.querySelector('.window').classList.add('close');
-        displayDataActive = false;
-      }
+      closeWindow();
     }, function after() {
       timeOut = setTimeout(resetCenter, 400);
     });
@@ -365,8 +351,8 @@ function Zoom(render) {
 }
 
 function Drag(render) {
-  let startPoint = {};
-  let dragging = false;
+  let startPoint;
+  let dragging;
   let tempPoint;
 
   return {
@@ -427,6 +413,16 @@ function DistributionRanges(min, massMax, massMedian) {
       if (ranges[i] <= mass && mass <= ranges[i + 1]) {
         return sizes[i];
       }
+    }
+  }
+}
+
+function CloseWindow () {
+  const w = document.querySelector('.window');
+  return function () {
+    if (displayDataActive) {
+      w.classList.add('close');
+      displayDataActive = false;
     }
   }
 }
