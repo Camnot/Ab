@@ -1,8 +1,15 @@
 import 'normalize.css';
 import './style.css';
-import * as d3 from 'd3';
 import data from './data.json';
 import * as topojson from 'topojson';
+import * as selection from 'd3-selection';
+import { geoEquirectangular, geoPath, geoGraticule } from 'd3-geo';
+import { min, max, median } from 'd3-array';
+import { json } from 'd3-fetch';
+
+const d3 = Object.assign(selection, {
+  geoEquirectangular, geoPath, geoGraticule, min, max, median, json
+});
 
 let width = Math.min(960, document.body.clientWidth);
 let height = Math.min(480, document.body.clientHeight);
@@ -43,9 +50,9 @@ d3.json('/world.json').then(function (world) {
 }).catch(error => console.error(error));
 
 const massArray = data.features.map(f => +f.properties.mass);
-const max = d3.max(massArray);
-const median = d3.median(massArray);
-const dr = DistributionRanges(0, max, median);
+const massMax = d3.max(massArray);
+const massMedian = d3.median(massArray);
+const dr = DistributionRanges(0, massMax, massMedian);
 path.pointRadius(function (feature) {
   if (feature.type === 'Feature' && feature.geometry
       && feature.geometry.type === 'Point' && feature.properties
@@ -403,15 +410,15 @@ function Drag(render) {
   };
 }
 
-function DistributionRanges(min, max, median) {
+function DistributionRanges(min, massMax, massMedian) {
   const sizes = [2, 3, 4, 5, 7, 9, 11, 13];
-  const firstHalf = (median - min) / 4;
-  const secondHalf = (max - median) / 4;
+  const firstHalf = (massMedian - min) / 4;
+  const secondHalf = (massMax - massMedian) / 4;
   const firstHalfRanges = [];
   const secondHalfRanges = [];
   for (let i = 0; i <= 4; i++) {
     firstHalfRanges.push(min + firstHalf * i);
-    secondHalfRanges.push(median + secondHalf * i);
+    secondHalfRanges.push(massMedian + secondHalf * i);
   }
   firstHalfRanges.pop();
   const ranges = [...firstHalfRanges, ...secondHalfRanges];
