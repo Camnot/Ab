@@ -141,6 +141,8 @@ const zoom = Zoom(render);
 let coors = [...COORS];
 const drag = Drag(render);
 let center = [...CENTER];
+let moveCounter = 0;
+let moveTimer = 0;
 
 svg.on('wheel', function () {
     const sum = -d3.event.deltaY * 22;
@@ -170,12 +172,24 @@ svg.on('wheel', function () {
     if (d3.event.eventPhase === 2) {
       closeWindow();
     }
+    moveCounter = 0;
+    moveTimer = Date.now();
   })
   .on('touchend', function () {
     zoom.end();
     render.stop();
     drag.drop();
-    render.stop();
+
+    if (!moveCounter) return;
+    moveCounter++;
+
+    const now = Date.now();
+    const moveTime = now - moveTimer;
+    const fps = 1000 * moveCounter / moveTime;
+    d3.select('.temp-flat').html(
+      'moves ' + moveCounter +
+      ' fps ' + fps.toFixed(2)
+    );
   })
   .on('touchmove', function () {
     d3.event.preventDefault();
@@ -186,6 +200,7 @@ svg.on('wheel', function () {
         ty: d3.event.touches[0].clientY
       });
     }
+    moveCounter++;
     closeWindow();
   })
   .on('mousedown', function (e) {
@@ -195,13 +210,24 @@ svg.on('wheel', function () {
       tx: d3.event.clientX,
       ty: d3.event.clientY
     });
+    moveCounter = 0;
+    moveTimer = Date.now();
   })
   .on('mouseup', function () {
     zoom.end();
-    drag.drop({
-      tx: d3.event.clientX,
-      ty: d3.event.clientY
-    });
+    render.stop();
+    drag.drop();
+
+    if (!moveCounter) return;
+    moveCounter++;
+
+    const now = Date.now();
+    const moveTime = now - moveTimer;
+    const fps = 1000 * moveCounter / moveTime;
+    d3.select('.temp-flat').html(
+      'moves ' + moveCounter +
+      ' fps ' + fps.toFixed(2)
+    );
   })
   .on('mousemove', function () {
     zoom.end();
@@ -211,6 +237,7 @@ svg.on('wheel', function () {
         ty: d3.event.clientY
       });
     }
+    moveCounter++;
   })
 ;
 
@@ -361,13 +388,11 @@ function Drag(render) {
       tempPoint = startPoint;
       dragging = true;
     },
-    drop(point) {
+    drop() {
       if (!dragging) {
         return;
       }
-      if (!point) {
-        point = tempPoint;
-      }
+      const point = tempPoint;
       coors[0] += point.tx - startPoint.tx;
       coors[1] += point.ty - startPoint.ty;
       const gradeX = height / 180;
