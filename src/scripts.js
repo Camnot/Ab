@@ -25,7 +25,7 @@ let path = d3.geoPath()
   .projection(projection)
 ;
 const graticule = d3.geoGraticule();
-const svg = d3.select('body').append('svg')
+const svg = d3.select('svg')
   .attr('width', width)
   .attr('height', height)
 ;
@@ -84,19 +84,19 @@ svg.append('g')
   })
 ;
 
+const windowDiv = document.querySelector('.window');
 function showMeteoriteData(feature) {
-  const w = document.querySelector('.window');
-  w.classList.remove('close');
+  windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
   const { clientX, clientY } = touches? touches[0]: d3.event;
-  w.style.top = (clientY + 20 + pageYOffset) + 'px';
+  windowDiv.style.top = (clientY + 20 + pageYOffset) + 'px';
   const space = width - (pageXOffset + clientX + 200 + 20);
-  w.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
+  windowDiv.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
 
   const {
     id, name, year, mass, recclass, reclat, reclong
   } = feature.properties;
-  w.innerHTML = [
+  windowDiv.innerHTML = [
     `id: ${id}`,
     `name: ${name}`,
     `year: ${new Date(year).getFullYear()}`,
@@ -129,8 +129,14 @@ svg.append('line')
   .attr('class', 'cross-center')
 ;
 
-const closeWindow = CloseWindow();
-d3.select('body').append('div').attr('class', 'window close')
+const closeWindow = () => {
+  if (displayDataActive) {
+    windowDiv.classList.add('close');
+    displayDataActive = false;
+  }
+}
+d3.select('.window')
+  .attr('class', 'window close')
   .on('touchstart', closeWindow)
   .on('touchmove', closeWindow)
 ;
@@ -442,12 +448,3 @@ function DistributionRanges(min, massMax, massMedian) {
   }
 }
 
-function CloseWindow () {
-  const w = document.querySelector('.window');
-  return function () {
-    if (displayDataActive) {
-      w.classList.add('close');
-      displayDataActive = false;
-    }
-  }
-}

@@ -73,3 +73,9 @@ svg {
   margin-top: 0;
   margin-bottom: 14px;
 }
+
+.temp-flat {
+  position: fixed;
+  color: rgb(137, 179, 235);
+  font-weight: 900;
+}
