@@ -1,6 +1,7 @@
 const Path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCSSExtractTextPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   entry: './src/scripts.js',
@@ -40,6 +41,11 @@ module.exports = {
     }),
     new MiniCSSExtractTextPlugin({
       filename: 'styles.css'
+    }),
+    new webpack.DefinePlugin({
+      __PROD__: JSON.stringify(false),
+      __DEV__: JSON.stringify(true),
+      'process.env.NODE_ENV': JSON.stringify('development')
     })
   ]
 };

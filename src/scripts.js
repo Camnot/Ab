@@ -6,6 +6,28 @@ import * as selection from 'd3-selection';
 import { geoEquirectangular, geoPath, geoGraticule } from 'd3-geo';
 import { min, max, median } from 'd3-array';
 import { json } from 'd3-fetch';
+import { saveRequestID, setReady, triggerError } from './actions';
+
+let worker;
+if (__DEV__) {
+  const Worker = require('worker-loader!./long-pooling.js');
+  worker = new Worker();
+  worker.addEventListener('message', function (e) {
+    const { payload } = e.data;
+    switch (e.data.action) {
+      case triggerError:
+        console.error(payload);
+        worker.terminate();
+      break;
+      case 'logText':
+        console.log(payload);
+      break;
+    }
+  });
+  worker.addEventListener('close', function (e) {
+    console.log(e);
+  });
+}
 
 const d3 = Object.assign(selection, {
   geoEquirectangular, geoPath, geoGraticule, min, max, median, json
@@ -112,6 +134,7 @@ const middleX = width / 2;
 const length = 10;
 const stroke = '#45aca0';
 
+{ //draw center cross and windowDiv
 svg.append('line')
   .attr('x1', middleX - length)
   .attr('y1', middleY)
@@ -129,27 +152,30 @@ svg.append('line')
   .attr('class', 'cross-center')
 ;
 
-const closeWindow = () => {
+d3.select('.window')
+.attr('class', 'window close')
+.on('touchstart', closeWindow)
+.on('touchmove', closeWindow)
+;
+}
+
+function closeWindow() {
   if (displayDataActive) {
     windowDiv.classList.add('close');
     displayDataActive = false;
   }
 }
-d3.select('.window')
-  .attr('class', 'window close')
-  .on('touchstart', closeWindow)
-  .on('touchmove', closeWindow)
-;
 
 const render = Render();
-let scale = SCALE;
 const zoom = Zoom(render);
-let coors = [...COORS];
 const drag = Drag(render);
+let coors = [...COORS];
 let center = [...CENTER];
+let scale = SCALE;
 let moveCounter = 0;
 let moveTimer = 0;
 
+{ //svg events
 svg.on('wheel', function () {
     const sum = -d3.event.deltaY * 22;
     scale = Math.min(2000, Math.max(40, scale + sum));
@@ -181,22 +207,7 @@ svg.on('wheel', function () {
     moveCounter = 0;
     moveTimer = Date.now();
   })
-  .on('touchend', function () {
-    zoom.end();
-    render.stop();
-    drag.drop();
-
-    if (!moveCounter) return;
-    moveCounter++;
-
-    const now = Date.now();
-    const moveTime = now - moveTimer;
-    const fps = 1000 * moveCounter / moveTime;
-    d3.select('.temp-flat').html(
-      'moves ' + moveCounter +
-      ' fps ' + fps.toFixed(2)
-    );
-  })
+  .on('touchend', motionEnd)
   .on('touchmove', function () {
     d3.event.preventDefault();
     zoom.end();
@@ -219,22 +230,7 @@ svg.on('wheel', function () {
     moveCounter = 0;
     moveTimer = Date.now();
   })
-  .on('mouseup', function () {
-    zoom.end();
-    render.stop();
-    drag.drop();
-
-    if (!moveCounter) return;
-    moveCounter++;
-
-    const now = Date.now();
-    const moveTime = now - moveTimer;
-    const fps = 1000 * moveCounter / moveTime;
-    d3.select('.temp-flat').html(
-      'moves ' + moveCounter +
-      ' fps ' + fps.toFixed(2)
-    );
-  })
+  .on('mouseup', motionEnd)
   .on('mousemove', function () {
     zoom.end();
     if (drag.isDragging()) {
@@ -246,87 +242,67 @@ svg.on('wheel', function () {
     moveCounter++;
   })
 ;
+}
 
-window.addEventListener('resize', function (e) {
-  render.queue(function before() {
-    width = Math.min(960, document.body.clientWidth);
-    height = Math.min(480, document.body.clientHeight);
-    svg
-      .attr('width', width)
-      .attr('height', height)
-    ;
-    COORS = [width / 2, height / 2];
-    SCALE = height / Math.PI;
-    scale = SCALE;
-    projection
-      .scale(scale)
-      .translate(COORS);
-    path = d3.geoPath()
-      .projection(projection)
-    ;
+function motionEnd() {
+  zoom.end();
+  render.stop();
+  drag.drop();
 
-    svg.selectAll('.cross-center').remove();
+  if (!moveCounter) return;
+  moveCounter++;
 
-    const middleY = height / 2;
-    const middleX = width / 2;
-    const length = 10;
-    const stroke = '#45aca0';
-    
-    svg.append('line')
-      .attr('x1', middleX - length)
-      .attr('y1', middleY)
-      .attr('x2', middleX + length)
-      .attr('y2', middleY)
-      .attr('stroke', stroke)
-      .attr('class', 'cross-center')
-    ;
-    svg.append('line')
-      .attr('x1', middleX)
-      .attr('y1', middleY - length)
-      .attr('x2', middleX)
-      .attr('y2', middleY + length)
-      .attr('stroke', stroke)
-      .attr('class', 'cross-center')
-    ;
-  });
-});
+  const now = Date.now();
+  const moveTime = now - moveTimer;
+  const fps = 1000 * moveCounter / moveTime;
+  d3.select('.temp-flat').html(
+    'moves ' + moveCounter +
+    ' fps ' + fps.toFixed(2)
+  );
+  if (__DEV__) {
+    worker.postMessage({ action: setReady });
+  }
+}
 
 function Render() {
-  let request = requestAnimationFrame(render);
+  let requestId = requestAnimationFrame(render);
 
   return {
     queue,
-    imediate() {
-      requestAnimationFrame(render);
-    },
     stop() {
-      cancelAnimationFrame(request);
+      cancelAnimationFrame(requestId);
+      requestId = 0;
     }
   };
 
   function render() {
-    svg.select('.graticule')
-    .attr('d', path);
-    svg.select('.land')
-      .attr('d', path);
-    svg.select('.boundary')
-      .attr('d', path);
-    svg.selectAll('.meteorites')
-      .attr('d', path);
+    svg.select('.graticule').attr('d', path);
+    svg.select('.land').attr('d', path);
+    svg.select('.boundary').attr('d', path);
+    svg.selectAll('.meteorites').attr('d', path);
+
+    if (__DEV__) {
+      worker.postMessage({ action: saveRequestID, payload: requestId });
+    }
+    requestId = 0;
   }
 
   function queue(beforeRender, after) {
-    cancelAnimationFrame(request);
-    if (beforeRender) {
-      request = requestAnimationFrame(function callback() {
-        beforeRender();
-        render();
-        if (after) {
-          queue(after);
-        }
-      });
-    } else {
-      request = requestAnimationFrame(render);
+    if (!requestId) {
+      if (beforeRender && after) {
+        requestId = requestAnimationFrame(() => {
+          beforeRender();
+          render();
+          after();
+        });
+      } else if (beforeRender) {
+        requestId = requestAnimationFrame(() => {
+          beforeRender();
+          render();
+        });
+      } else {
+        requestId = requestAnimationFrame(render);
+      }
     }
   }
 }
@@ -371,7 +347,7 @@ function Zoom(render) {
       state = ZOOM;
       closeWindow();
     }, function after() {
-      timeOut = setTimeout(resetCenter, 400);
+      timeOut = setTimeout(resetCenter, 500);
     });
   }
   
@@ -386,39 +362,43 @@ function Zoom(render) {
 function Drag(render) {
   let startPoint;
   let dragging;
-  let tempPoint;
+  let lastPoint;
 
   return {
     start(point) {
       startPoint = point;
-      tempPoint = startPoint;
+      lastPoint = startPoint;
       dragging = true;
     },
     drop() {
       if (!dragging) {
         return;
       }
-      const point = tempPoint;
-      coors[0] += point.tx - startPoint.tx;
-      coors[1] += point.ty - startPoint.ty;
+      coors[0] += lastPoint.tx - startPoint.tx;
+      coors[1] += lastPoint.ty - startPoint.ty;
       const gradeX = height / 180;
       const gradeY = height / 160;
       const vx = COORS[0] / gradeX;
       const vy = COORS[1] / gradeY;
       center[0] += -coors[0] / gradeX + vx;
       center[1] += coors[1] / gradeY - vy;
-      projection.translate(COORS);
-      projection.center(center)
-      render.imediate();
+      const center2 = Object.assign({}, center);
+      render.queue(function beforeRender() {
+        projection.translate(COORS);
+        projection.center(center2);
+      });
       coors = [...COORS];
       dragging = false;
+      startPoint = lastPoint = null;
     },
     move(point) {
-      tempPoint = point;
+      lastPoint = point;
+      const startPoint2 = Object.assign({}, startPoint);
+      const point2 = Object.assign({}, point);
       render.queue(function beforeRender() {
         const tempCoors = [
-          COORS[0] + point.tx - startPoint.tx,
-          COORS[1] + point.ty - startPoint.ty
+          COORS[0] + point2.tx - startPoint2.tx,
+          COORS[1] + point2.ty - startPoint2.ty
         ];
         projection.translate(tempCoors);
       });
@@ -448,3 +428,46 @@ function DistributionRanges(min, massMax, massMedian) {
   }
 }
 
+window.addEventListener('resize', function (e) {
+  render.queue(function before() {
+    width = Math.min(960, document.body.clientWidth);
+    height = Math.min(480, document.body.clientHeight);
+    svg
+      .attr('width', width)
+      .attr('height', height)
+    ;
+    COORS = [width / 2, height / 2];
+    SCALE = height / Math.PI;
+    scale = SCALE;
+    projection
+      .scale(scale)
+      .translate(COORS);
+    path = d3.geoPath()
+      .projection(projection)
+    ;
+
+    svg.selectAll('.cross-center').remove();
+
+    const middleY = height / 2;
+    const middleX = width / 2;
+    const length = 10;
+    const stroke = '#45aca0';
+    
+    svg.append('line')
+      .attr('x1', middleX - length)
+      .attr('y1', middleY)
+      .attr('x2', middleX + length)
+      .attr('y2', middleY)
+      .attr('stroke', stroke)
+      .attr('class', 'cross-center')
+    ;
+    svg.append('line')
+      .attr('x1', middleX)
+      .attr('y1', middleY - length)
+      .attr('x2', middleX)
+      .attr('y2', middleY + length)
+      .attr('stroke', stroke)
+      .attr('class', 'cross-center')
+    ;
+  });
+});
