@@ -190,8 +190,8 @@ svg.on('wheel', function () {
       projection.scale(scale);
       render.queue();
     } else {
-      const center = false;
-      zoom.reset(center);
+      const centre = false;
+      zoom.reset(centre);
     }
   })
   .on('touchstart', function () {
@@ -337,17 +337,16 @@ function Zoom(render) {
       projection.scale(scale);
       state = RESET;
     });
-    timeOut = setTimeout(zoom, 20);
+    timeOut = setTimeout(zoom, 40);
   }
 
-  function resetScale(center = true) {
+  function resetScale(centre = true) {
     render.stop();
     render.queue(function beforeRender() {
       scale = SCALE;
       projection.scale(scale);
       state = ZOOM;
-      closeWindow();
-    }, center && function after() {
+    }, centre && function after() {
       timeOut = setTimeout(resetCenter, 500);
     });
   }
@@ -355,7 +354,7 @@ function Zoom(render) {
   function resetCenter() {
     render.queue(function beforeRender() {
       center = [...CENTER];
-      projection.center(CENTER);
+      projection.center(center);
     });
   }
 }
