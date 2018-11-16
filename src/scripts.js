@@ -190,7 +190,8 @@ svg.on('wheel', function () {
       projection.scale(scale);
       render.queue();
     } else {
-      zoom.reset();
+      const center = false;
+      zoom.reset(center);
     }
   })
   .on('touchstart', function () {
@@ -217,7 +218,6 @@ svg.on('wheel', function () {
         ty: d3.event.touches[0].clientY
       });
     }
-    moveCounter++;
     closeWindow();
   })
   .on('mousedown', function (e) {
@@ -239,7 +239,6 @@ svg.on('wheel', function () {
         ty: d3.event.clientY
       });
     }
-    moveCounter++;
   })
 ;
 }
@@ -285,6 +284,7 @@ function Render() {
       worker.postMessage({ action: saveRequestID, payload: requestId });
     }
     requestId = 0;
+    moveCounter++;
   }
 
   function queue(beforeRender, after) {
@@ -340,13 +340,14 @@ function Zoom(render) {
     timeOut = setTimeout(zoom, 20);
   }
 
-  function resetScale() {
+  function resetScale(center = true) {
+    render.stop();
     render.queue(function beforeRender() {
       scale = SCALE;
       projection.scale(scale);
       state = ZOOM;
       closeWindow();
-    }, function after() {
+    }, center && function after() {
       timeOut = setTimeout(resetCenter, 500);
     });
   }
