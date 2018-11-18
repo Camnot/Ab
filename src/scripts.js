@@ -212,12 +212,10 @@ svg.on('wheel', function () {
   .on('touchmove', function () {
     d3.event.preventDefault();
     zoom.end();
-    if (drag.isDragging()) {
-      drag.move({
-        tx: d3.event.touches[0].clientX,
-        ty: d3.event.touches[0].clientY
-      });
-    }
+    drag.move({
+      tx: d3.event.touches[0].clientX,
+      ty: d3.event.touches[0].clientY
+    });
     closeWindow();
   })
   .on('mousedown', function (e) {
@@ -361,6 +359,7 @@ function Zoom(render) {
 
 function Drag(render) {
   let startPoint;
+  let willDrag;
   let dragging;
   let lastPoint;
 
@@ -368,7 +367,7 @@ function Drag(render) {
     start(point) {
       startPoint = point;
       lastPoint = startPoint;
-      dragging = true;
+      willDrag = true;
     },
     drop() {
       if (!dragging) {
@@ -382,19 +381,21 @@ function Drag(render) {
       const vy = COORS[1] / gradeY;
       center[0] += -coors[0] / gradeX + vx;
       center[1] += coors[1] / gradeY - vy;
-      const center2 = Object.assign({}, center);
+      const center2 = [...center];
       render.queue(function beforeRender() {
         projection.translate(COORS);
         projection.center(center2);
       });
       coors = [...COORS];
       dragging = false;
+      willDrag = false;
       startPoint = lastPoint = null;
     },
     move(point) {
       lastPoint = point;
+      dragging = true;
       const startPoint2 = Object.assign({}, startPoint);
-      const point2 = Object.assign({}, point);
+      const point2 = Object.assign({}, lastPoint);
       render.queue(function beforeRender() {
         const tempCoors = [
           COORS[0] + point2.tx - startPoint2.tx,
@@ -403,7 +404,7 @@ function Drag(render) {
         projection.translate(tempCoors);
       });
     },
-    isDragging: () => dragging
+    isDragging: () => willDrag && dragging
   };
 }
 
