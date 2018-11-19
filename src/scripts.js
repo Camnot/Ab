@@ -25,7 +25,7 @@ if (__DEV__) {
     }
   });
   worker.addEventListener('close', function (e) {
-    console.log(e);
+    console.log('worker closed:', e);
   });
 }
 
@@ -176,7 +176,9 @@ let moveCounter = 0;
 let moveTimer = 0;
 
 { //svg events
-svg.on('wheel', function () {
+svg
+  .on('wheel', function () {
+    d3.event.preventDefault()
     const sum = -d3.event.deltaY * 22;
     scale = Math.min(2000, Math.max(40, scale + sum));
     projection.scale(scale);
@@ -370,24 +372,23 @@ function Drag(render) {
       willDrag = true;
     },
     drop() {
-      if (!dragging) {
-        return;
+      if (dragging) {
+        coors[0] += lastPoint.tx - startPoint.tx;
+        coors[1] += lastPoint.ty - startPoint.ty;
+        const gradeX = height / 180;
+        const gradeY = height / 160;
+        const vx = COORS[0] / gradeX;
+        const vy = COORS[1] / gradeY;
+        center[0] += -coors[0] / gradeX + vx;
+        center[1] += coors[1] / gradeY - vy;
+        const center2 = [...center];
+        render.queue(function beforeRender() {
+          projection.translate(COORS);
+          projection.center(center2);
+        });
+        coors = [...COORS];
+        dragging = false;
       }
-      coors[0] += lastPoint.tx - startPoint.tx;
-      coors[1] += lastPoint.ty - startPoint.ty;
-      const gradeX = height / 180;
-      const gradeY = height / 160;
-      const vx = COORS[0] / gradeX;
-      const vy = COORS[1] / gradeY;
-      center[0] += -coors[0] / gradeX + vx;
-      center[1] += coors[1] / gradeY - vy;
-      const center2 = [...center];
-      render.queue(function beforeRender() {
-        projection.translate(COORS);
-        projection.center(center2);
-      });
-      coors = [...COORS];
-      dragging = false;
       willDrag = false;
       startPoint = lastPoint = null;
     },
@@ -404,7 +405,7 @@ function Drag(render) {
         projection.translate(tempCoors);
       });
     },
-    isDragging: () => willDrag && dragging
+    isDragging: () => willDrag
   };
 }
 
