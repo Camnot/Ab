@@ -345,6 +345,7 @@ function Zoom(render) {
       scale = SCALE;
       projection.scale(scale);
       state = ZOOM;
+      height = Math.min(480, document.body.clientHeight);
     }, centre && function after() {
       timeOut = setTimeout(resetCenter, 500);
     });
