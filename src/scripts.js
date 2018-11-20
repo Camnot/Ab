@@ -85,6 +85,7 @@ path.pointRadius(function (feature) {
 });
 
 let displayDataActive = false;
+const windowDiv = document.querySelector('.window');
 svg.append('g')
   .attr('class', 'meteor-layer')
   .selectAll('.meteorites')
@@ -94,7 +95,7 @@ svg.append('g')
   .attr('d', path)
   .on('mouseover', showMeteoriteData)
   .on('mouseleave', function () {
-    document.querySelector('.window').classList.add('close');
+    windowDiv.classList.add('close');
   })
   .on('touchstart', function () {
     displayDataActive = true;
@@ -106,7 +107,6 @@ svg.append('g')
   })
 ;
 
-const windowDiv = document.querySelector('.window');
 function showMeteoriteData(feature) {
   windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
@@ -203,7 +203,6 @@ svg
       tx: d3.event.touches[0].clientX,
       ty: d3.event.touches[0].clientY
     });
-
     if (d3.event.eventPhase === 2) {
       closeWindow();
     }
