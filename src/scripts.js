@@ -178,7 +178,7 @@ let moveTimer = 0;
 { //svg events
 svg
   .on('wheel', function () {
-    d3.event.preventDefault()
+    d3.event.preventDefault();
     const sum = -d3.event.deltaY * 22;
     scale = Math.min(2000, Math.max(40, scale + sum));
     projection.scale(scale);
@@ -212,11 +212,13 @@ svg
   .on('touchend', motionEnd)
   .on('touchmove', function () {
     d3.event.preventDefault();
-    zoom.end();
-    drag.move({
-      tx: d3.event.touches[0].clientX,
-      ty: d3.event.touches[0].clientY
-    });
+    if (!zoom.isZooming()) {
+      zoom.end();
+      drag.move({
+        tx: d3.event.touches[0].clientX,
+        ty: d3.event.touches[0].clientY
+      });
+    }
     closeWindow();
   })
   .on('mousedown', function (e) {
@@ -231,7 +233,9 @@ svg
   })
   .on('mouseup', motionEnd)
   .on('mousemove', function () {
-    zoom.end();
+    if (zoom.isZooming()) {
+      zoom.end();
+    }
     if (drag.isDragging()) {
       drag.move({
         tx: d3.event.clientX,
@@ -307,18 +311,20 @@ function Render() {
 }
 
 function Zoom(render) {
-  const ZOOM = 'ZOOM';
-  const RESET = 'RESET';
-  let state = ZOOM;
+  const STOPPED = 'STOPPED';
+  const ZOOMING = 'ZOOMING';
+  const RESETTING = 'RESETTING';
+  let state = STOPPED;
   let timeOut;
 
   return {
     start() {
       switch (state) {
-        case ZOOM:
+        case STOPPED:
+        case RESETTING:
         timeOut = setTimeout(zoom, 1050);
         break;
-        case RESET:
+        case ZOOMING:
         timeOut = setTimeout(resetScale, 750);
         break;
       }
@@ -326,35 +332,42 @@ function Zoom(render) {
     end() {
       clearTimeout(timeOut);
     },
-    reset: resetScale
+    reset: resetScale,
+    isZooming: () => state === ZOOMING,
+    isResetting: () => state === RESETTING
   };
 
   function zoom() {
+    state = ZOOMING;
     render.queue(function beforeRender() {
       height = scale * Math.PI;
       scale = Math.min(scale + 3 * 22, 2000);
       projection.scale(scale);
-      state = RESET;
+    }, function after() {
+      timeOut = setTimeout(zoom, 40);
     });
-    timeOut = setTimeout(zoom, 40);
   }
 
   function resetScale(centre = true) {
     render.stop();
+    state = RESETTING;
     render.queue(function beforeRender() {
       scale = SCALE;
       projection.scale(scale);
-      state = ZOOM;
       height = Math.min(480, document.body.clientHeight);
     }, centre && function after() {
       timeOut = setTimeout(resetCenter, 500);
+      state = STOPPED;
     });
   }
-  
+
   function resetCenter() {
+    state = RESETTING;
     render.queue(function beforeRender() {
       center = [...CENTER];
       projection.center(center);
+    }, function after() {
+      state = STOPPED;
     });
   }
 }
