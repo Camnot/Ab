@@ -108,14 +108,23 @@ svg.append('g')
   })
 ;
 
+const svgYOffset = svg.node().getBoundingClientRect().top;
 function showMeteoriteData(feature) {
   windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
   const { clientX, clientY } = touches? touches[0]: d3.event;
-  windowDiv.style.top = (clientY + 20 + pageYOffset) + 'px';
-  const space = width - (pageXOffset + clientX + 200 + 20);
-  windowDiv.style.left = (space > 0 ? (width - space - 220) : width - 210) + 'px';
-
+  const contentWidth = 210;
+  const contentHeight = 250;
+  const spaceRight = width - (pageXOffset + clientX + contentWidth);
+  const spaceBot = height + svgYOffset - (pageYOffset + clientY + contentHeight);
+  windowDiv.style.left = (
+    spaceRight > 0 ? width - (spaceRight + contentWidth) : width - contentWidth
+  ) + 'px';
+  windowDiv.style.top = (
+    spaceBot > 0 ?
+    height + svgYOffset + 20 - (spaceBot + contentHeight) :
+    height + svgYOffset - (spaceBot + contentHeight * 2 + 20)
+  ) + 'px';
   const {
     id, name, year, mass, recclass, reclat, reclong
   } = feature.properties;
