@@ -75,14 +75,15 @@ const massArray = data.features.map(f => +f.properties.mass);
 const massMax = d3.max(massArray);
 const massMedian = d3.median(massArray);
 const dr = DistributionRanges(0, massMax, massMedian);
-path.pointRadius(function (feature) {
+path.pointRadius(personalizeSize);
+function personalizeSize(feature) {
   if (feature.type === 'Feature' && feature.geometry
       && feature.geometry.type === 'Point' && feature.properties
       && feature.properties.mass) {
     return dr(feature.properties.mass) + 2;
   }
   return 4.5;
-});
+}
 
 let displayDataActive = false;
 const windowDiv = document.querySelector('.window');
@@ -484,5 +485,6 @@ window.addEventListener('resize', function (e) {
       .attr('stroke', stroke)
       .attr('class', 'cross-center')
     ;
+    path.pointRadius(personalizeSize);
   });
 });
