@@ -6,9 +6,10 @@ import * as selection from 'd3-selection';
 import { geoEquirectangular, geoPath, geoGraticule } from 'd3-geo';
 import { min, max, median } from 'd3-array';
 import { json } from 'd3-fetch';
-import { saveRequestID, setReady, triggerError } from './actions';
+import { saveRequestID, setReady, triggerError, log } from './actions';
 
 let worker;
+let logViewHeight;
 if (__DEV__) {
   const Worker = require('worker-loader!./long-pooling.js');
   worker = new Worker();
@@ -19,7 +20,7 @@ if (__DEV__) {
         console.error(payload);
         worker.terminate();
       break;
-      case 'logText':
+      case log:
         console.log(payload);
       break;
     }
@@ -27,6 +28,14 @@ if (__DEV__) {
   worker.addEventListener('close', function (e) {
     console.log('worker closed:', e);
   });
+
+  logViewHeight = function () {
+    const { top, bottom } = svg.node().getBoundingClientRect();
+    worker.postMessage({
+      action: log,
+      payload: { top: top > 0? top.toFixed(2) : 0, bottom: bottom.toFixed(2) }
+    });
+  }
 }
 
 const d3 = Object.assign(selection, {
@@ -85,6 +94,10 @@ function personalizeSize(feature) {
   return 4.5;
 }
 
+if (__DEV__) {
+  logViewHeight();
+}
+
 let displayDataActive = false;
 const windowDiv = document.querySelector('.window');
 svg.append('g')
@@ -117,14 +130,16 @@ function showMeteoriteData(feature) {
   const contentHeight = 250;
   const spaceRight = width - (pageXOffset + clientX + contentWidth);
   const spaceBot = height + svgYOffset - (pageYOffset + clientY + contentHeight);
-  windowDiv.style.left = (
-    spaceRight > 0 ? width - (spaceRight + contentWidth) : width - contentWidth
-  ) + 'px';
-  windowDiv.style.top = (
-    spaceBot > 0 ?
-    height + svgYOffset + 20 - (spaceBot + contentHeight) :
-    height + svgYOffset - (spaceBot + contentHeight * 2 + 20)
-  ) + 'px';
+  const px = 'px';
+  windowDiv.style.left = spaceRight > 0?
+    clientX + 20 + px :
+    width - (contentWidth + 10) + px
+  ;
+  windowDiv.style.top = spaceBot > 0?
+    clientY + 20 + px :
+    height - (contentHeight + 10) + px
+  ;
+ 
   const {
     id, name, year, mass, recclass, reclat, reclong
   } = feature.properties;
@@ -137,6 +152,22 @@ function showMeteoriteData(feature) {
     `lat: ${reclat}`,
     `long: ${reclong}`
   ].map((f) => `<p class="flat">${f}</p>`).join('');
+
+  if (__DEV__) {
+    const { top, bottom } = svg.node().getBoundingClientRect();
+    const { availHeight, height } = screen;
+    worker.postMessage({
+      action: log,
+      payload: {
+        top: top > 0? top.toFixed(2): 0,
+        bottom: bottom.toFixed(2),
+        availHeight,
+        height,
+        clientX,
+        clientY
+      }
+    });
+  }
 }
 
 const middleY = height / 2;
@@ -455,6 +486,7 @@ function DistributionRanges(min, massMax, massMedian) {
 
 window.addEventListener('resize', function (e) {
   render.queue(function before() {
+    closeWindow();
     width = Math.min(960, document.body.clientWidth);
     height = Math.min(480, document.body.clientHeight);
     svg
@@ -495,5 +527,9 @@ window.addEventListener('resize', function (e) {
       .attr('class', 'cross-center')
     ;
     path.pointRadius(personalizeSize);
+
+    if (__DEV__) {
+      logViewHeight();
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { logMoves, setReady, triggerError, saveRequestID } from './actions';
+import { logMoves, setReady, triggerError, saveRequestID, log } from './actions';
 
 const clientId = `c${Math.round(Math.random() * 9999)}`;
 const routeTo = '/moves';
@@ -11,28 +11,35 @@ addEventListener('message', function (e) {
   let payload2;
   switch (action) {
     case logMoves:
-      payload2 = JSON.stringify({ id: ++id, payload });
-      fetch(routeTo, { method: 'POST', body: payload2 })
-        .then(function () {
-          postMessage({
-            action: 'logText', payload: `post /moves ${payload2}`
-          });
-        })
-        .catch(handleError)
-      ;
+    payload2 = JSON.stringify({ id: ++id, payload });
+    fetch(routeTo, { method: 'POST', body: payload2 })
+      .then(function () {
+        postMessage({
+          action: log,
+          payload: `post /moves ${payload2}`
+        });
+      })
+      .catch(handleError)
+    ;
     break;
     case saveRequestID: requests.push(payload); break;
     case setReady: ready = true; break;
+    case log:
+    postMessage({
+      action: log, payload: e.data.payload
+    });
+    fetch(routeTo, { method: 'POST', body: JSON.stringify(e.data.payload) + '\n' });
+    break;
     default: handleError('action or payload is not valid'); break;
   }
 });
 
 addEventListener('error', (e) => {
-  postMessage({ action: 'triggerError', payload: 'triggered error' });
+  postMessage({ action: 'triggerError', payload: 'triggered error: ' + e.message });
 });
 
 addEventListener('close', (e) => {
-  postMessage({ action: 'triggerError', payload: 'triggered error' });
+  postMessage({ action: 'triggerError', payload: 'triggered error: worker closed' });
 });
 
 fetch(routeTo, { method: 'POST', body: `client ${clientId} conected\n` });
