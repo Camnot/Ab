@@ -44,7 +44,6 @@ const d3 = Object.assign(selection, {
 
 let width = Math.min(960, document.body.clientWidth);
 let height = Math.min(480, document.body.clientHeight);
-
 let SCALE = height / Math.PI;
 let COORS = [width / 2, height / 2];
 let CENTER = [0, 0];
@@ -129,17 +128,34 @@ function showMeteoriteData(feature) {
   const contentWidth = 210;
   const contentHeight = 250;
   const spaceRight = width - (pageXOffset + clientX + contentWidth);
-  const spaceBot = height + svgYOffset - (pageYOffset + clientY + contentHeight);
+  const spaceBot = height - (clientY + contentHeight);
   const px = 'px';
-  windowDiv.style.left = spaceRight > 0?
-    clientX + 20 + px :
-    width - (contentWidth + 10) + px
+  const left = spaceRight > 0?
+    clientX + 20 :
+    width - (contentWidth + 10)
   ;
-  windowDiv.style.top = spaceBot > 0?
-    clientY + 20 + px :
-    height - (contentHeight + 10) + px
+  windowDiv.style.left = left + px;
+  const top = spaceBot > 0?
+    clientY + pageYOffset + 20 :
+    height + pageYOffset - (contentHeight)
   ;
- 
+  const yLimits = [
+    height - (contentHeight),
+    height + pageYOffset
+  ];
+  const xLimits = [
+    width - (contentWidth - 10),
+    width
+  ];
+  const isTopOnThePointer = clientY >= yLimits[0] && clientY <= yLimits[1]
+    && clientX >= xLimits[0] && clientX <= xLimits[1]
+  ;
+  if (isTopOnThePointer) {
+    windowDiv.style.top = clientY + pageYOffset - (contentHeight + 20) + px;
+  } else {
+    windowDiv.style.top = top + px;
+  }
+
   const {
     id, name, year, mass, recclass, reclat, reclong
   } = feature.properties;
