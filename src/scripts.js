@@ -120,7 +120,6 @@ svg.append('g')
   })
 ;
 
-const svgYOffset = svg.node().getBoundingClientRect().top;
 function showMeteoriteData(feature) {
   windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
@@ -290,10 +289,10 @@ svg
   })
   .on('mouseup', motionEnd)
   .on('mousemove', function () {
-    if (zoom.isZooming()) {
+    if (zoom.willZoom()) {
       zoom.end();
     }
-    if (drag.isDragging()) {
+    if (drag.isDragging() && !zoom.isZooming()) {
       drag.move({
         tx: d3.event.clientX,
         ty: d3.event.clientY
@@ -372,7 +371,7 @@ function Zoom(render) {
   const ZOOMING = 'ZOOMING';
   const RESETTING = 'RESETTING';
   let state = STOPPED;
-  let timeOut;
+  let timeOut = 0;
 
   return {
     start() {
@@ -388,10 +387,12 @@ function Zoom(render) {
     },
     end() {
       clearTimeout(timeOut);
+      timeOut = 0;
     },
     reset: resetScale,
     isZooming: () => state === ZOOMING,
-    isResetting: () => state === RESETTING
+    isResetting: () => state === RESETTING,
+    willZoom: () => timeOut && state === STOPPED
   };
 
   function zoom() {
