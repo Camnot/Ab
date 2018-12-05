@@ -268,12 +268,12 @@ svg
   .on('touchend', motionEnd)
   .on('touchmove', function () {
     d3.event.preventDefault();
-    if (!zoom.isZooming()) {
-      zoom.end();
+    if (drag.isDragging()) {
       drag.move({
         tx: d3.event.touches[0].clientX,
         ty: d3.event.touches[0].clientY
       });
+      zoom.end();
     }
     closeWindow();
   })
@@ -289,14 +289,12 @@ svg
   })
   .on('mouseup', motionEnd)
   .on('mousemove', function () {
-    if (zoom.willZoom()) {
-      zoom.end();
-    }
-    if (drag.isDragging() && !zoom.isZooming()) {
+    if (drag.isDragging()) {
       drag.move({
         tx: d3.event.clientX,
         ty: d3.event.clientY
       });
+      zoom.end();
     }
   })
 ;
