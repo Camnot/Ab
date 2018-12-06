@@ -8,7 +8,7 @@ module.exports = {
   devtool: 'none',
   output: {
     filename: 'scripts.js',
-    path: Path.resolve(__dirname, 'dist'),
+    path: Path.resolve(__dirname, 'docs'),
     publicPath: '/'
   },
   mode: 'production',
