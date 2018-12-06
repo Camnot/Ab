@@ -66,7 +66,7 @@ svg.append('path')
   .attr('d', path)
 ;
 
-d3.json('/world.json').then(function (world) {
+d3.json('world.json').then(function (world) {
   svg.insert("path", ".graticule")
       .datum(topojson.feature(world, world.objects.land))
       .attr("class", "land")
