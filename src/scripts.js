@@ -121,6 +121,9 @@ svg.append('g')
 ;
 
 function showMeteoriteData(feature) {
+  if (zoom.isZooming) {
+    return;
+  }
   windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
   const { clientX, clientY } = touches? touches[0]: d3.event;
@@ -268,7 +271,7 @@ svg
   .on('touchend', motionEnd)
   .on('touchmove', function () {
     d3.event.preventDefault();
-    if (drag.isDragging()) {
+    if (drag.isDragging() && !zoom.isZooming()) {
       drag.move({
         tx: d3.event.touches[0].clientX,
         ty: d3.event.touches[0].clientY
@@ -289,7 +292,7 @@ svg
   })
   .on('mouseup', motionEnd)
   .on('mousemove', function () {
-    if (drag.isDragging()) {
+    if (drag.isDragging() && !zoom.isZooming()) {
       drag.move({
         tx: d3.event.clientX,
         ty: d3.event.clientY
@@ -367,6 +370,7 @@ function Render() {
 function Zoom(render) {
   const STOPPED = 'STOPPED';
   const ZOOMING = 'ZOOMING';
+  const ZOOMED = 'ZOOMED';
   const RESETTING = 'RESETTING';
   let state = STOPPED;
   let timeOut = 0;
@@ -378,7 +382,7 @@ function Zoom(render) {
         case RESETTING:
         timeOut = setTimeout(zoom, 1050);
         break;
-        case ZOOMING:
+        case ZOOMED:
         timeOut = setTimeout(resetScale, 750);
         break;
       }
@@ -386,9 +390,13 @@ function Zoom(render) {
     end() {
       clearTimeout(timeOut);
       timeOut = 0;
+      if (state === ZOOMING) {
+        state = ZOOMED;
+      }
     },
     reset: resetScale,
     isZooming: () => state === ZOOMING,
+    isZoomed: () => state === ZOOMED,
     isResetting: () => state === RESETTING,
     willZoom: () => timeOut && state === STOPPED
   };
