@@ -121,9 +121,6 @@ svg.append('g')
 ;
 
 function showMeteoriteData(feature) {
-  if (zoom.isZooming) {
-    return;
-  }
   windowDiv.classList.remove('close');
   const touches = d3.event.changedTouches;
   const { clientX, clientY } = touches? touches[0]: d3.event;
